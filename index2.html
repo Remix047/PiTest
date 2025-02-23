@@ -7,7 +7,7 @@
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <script>
     // Inicializar el SDK de Pi
-    Pi.init({ version: "2.0" sandbox: true });
+    Pi.init({ version: "2.0", sandbox: false });
   </script>
   <style>
     body {
@@ -127,31 +127,10 @@
 
     let currentUser = null;
     let balance = 0;
-    let balanceTimestamp = null; // Marca de tiempo cuando se acreditó el primer saldo
 
-    // Funciones para gestionar el saldo usando localStorage
-    function loadBalance() {
-      const storedBalance = localStorage.getItem('piLotteryBalance');
-      const storedTimestamp = localStorage.getItem('piLotteryTimestamp');
-      if (storedBalance) {
-        balance = parseFloat(storedBalance);
-      }
-      if (storedTimestamp) {
-        balanceTimestamp = parseInt(storedTimestamp);
-      }
-      updateBalanceDisplay();
-    }
-
+    // Función para actualizar el saldo en la interfaz
     function updateBalanceDisplay() {
       document.getElementById('balance').innerText = balance.toFixed(2);
-    }
-
-    function saveBalance() {
-      localStorage.setItem('piLotteryBalance', balance);
-      if (!balanceTimestamp) {
-        balanceTimestamp = Date.now();
-        localStorage.setItem('piLotteryTimestamp', balanceTimestamp);
-      }
     }
 
     // Función para verificar la red (Mainnet o Testnet)
@@ -172,18 +151,20 @@
     // Manejo de autenticación
     document.getElementById('btn-auth').addEventListener('click', function() {
       const scopes = ['payments'];
-      // Callback opcional para pagos incompletos
+
+      // Callback para pagos incompletos
       function onIncompletePaymentFound(payment) {
         console.log("Pago incompleto encontrado:", payment);
-        // Manejar pagos incompletos según la lógica de tu aplicación
+        // Aquí puedes manejar pagos incompletos según tu lógica
       }
+
       Pi.authenticate(scopes, onIncompletePaymentFound)
         .then(function(auth) {
           currentUser = auth.user;
           document.getElementById('username').innerText = currentUser.username || "Usuario";
           document.getElementById('auth').classList.add('hidden');
           document.getElementById('game').classList.remove('hidden');
-          loadBalance();
+          updateBalanceDisplay();
         })
         .catch(function(error) {
           console.error("Error de autenticación:", error);
@@ -193,21 +174,18 @@
 
     // Manejo del juego
     document.getElementById('btn-play').addEventListener('click', function() {
-      if (balance < 1) {
-        alert("No tienes fondos suficientes para jugar.");
-        return;
-      }
-
       const selectedNumber = parseInt(selectElem.value);
-      const paymentData = {
+
+      Pi.createPayment({
         amount: 1,
         memo: `Juego de lotería - Número seleccionado: ${selectedNumber}`,
         metadata: { number: selectedNumber }
-      };
-
-      Pi.createPayment(paymentData)
-        .then(function(payment) {
-          console.log("Pago exitoso:", payment);
+      }, {
+        onReadyForServerApproval: function(paymentId) {
+          console.log("Pago listo para aprobación del servidor:", paymentId);
+        },
+        onReadyForServerCompletion: function(paymentId, txid) {
+          console.log("Pago listo para completar en el servidor:", paymentId, txid);
           const randomNumber = Math.floor(Math.random() * 10) + 1;
           if (selectedNumber === randomNumber) {
             balance += 10; // Premio por acertar
@@ -215,39 +193,17 @@
           } else {
             document.getElementById('result').innerText = `Perdiste. El número ganador era ${randomNumber}.`;
           }
-          saveBalance();
           updateBalanceDisplay();
-        })
-        .catch(function(error) {
-          console.error("Error en el pago:", error);
+        },
+        onCancel: function(paymentId) {
+          console.log("Pago cancelado:", paymentId);
+          alert("Pago cancelado por el usuario.");
+        },
+        onError: function(error, payment) {
+          console.error("Error en el pago:", error, payment);
           alert("Error en el pago: " + error.message);
-        });
-    });
-
-    // Manejo de reclamación de saldo
-    document.getElementById('btn-claim').addEventListener('click', function() {
-      if (balance > 0) {
-        const paymentData = {
-          amount: balance,
-          memo: "Reclamación de saldo acumulado",
-          metadata: { action: "claim" }
-        };
-
-        Pi.createPayment(paymentData)
-          .then(function(payment) {
-            console.log("Pago de reclamación exitoso:", payment);
-            balance = 0;
-            saveBalance();
-            updateBalanceDisplay();
-            alert("Saldo reclamado con éxito.");
-          })
-          .catch(function(error) {
-            console.error("Error en la reclamación:", error);
-            alert("Error en la reclamación: " + error.message);
-          });
-      } else {
-        alert("No tienes saldo para reclamar.");
-      }
+        }
+      });
     });
 
     // Cerrar sesión
@@ -259,9 +215,7 @@
       alert("Sesión cerrada correctamente.");
     });
 
-    // Cargar el saldo al iniciar la página
-    loadBalance();
-    // Actualizar el estado de la red
+    // Actualizar el estado de la red al cargar la página
     updateNetworkStatus();
   </script>
 </body>
