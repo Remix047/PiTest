@@ -6,7 +6,7 @@
   <!-- Incluir el SDK de Pi -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <script>
-    // Inicializar el SDK de Pi
+    // Inicializar el SDK de Pi en modo sandbox
     Pi.init({ version: "2.0", sandbox: true });
   </script>
   <style>
@@ -114,109 +114,109 @@
       <a href="privacy.html" target="_blank">Política de Privacidad</a>
     </footer>
   </div>
-
   <script>
-    // Rellenar el select con números del 1 al 10
-    const selectElem = document.getElementById('number');
-    for (let i = 1; i <= 10; i++) {
-      const option = document.createElement('option');
-      option.value = i;
-      option.text = i;
-      selectElem.appendChild(option);
+  // Rellenar el select con números del 1 al 10
+  const selectElem = document.getElementById('number');
+  for (let i = 1; i <= 10; i++) {
+    const option = document.createElement('option');
+    option.value = i;
+    option.text = i;
+    selectElem.appendChild(option);
+  }
+
+  let currentUser = null;
+  let balance = 0;
+
+  // Función para actualizar el saldo en la interfaz
+  function updateBalanceDisplay() {
+    document.getElementById('balance').innerText = balance.toFixed(2);
+  }
+
+  // Función para verificar la red (Mainnet o Testnet)
+  function updateNetworkStatus() {
+    const networkType = Pi.sandbox ? "Testnet" : "Mainnet";
+    const networkStatusElem = document.getElementById('network-status');
+    const networkTypeElem = document.getElementById('network-type');
+    networkTypeElem.innerText = networkType;
+    if (Pi.sandbox) {
+      networkStatusElem.classList.remove('active');
+      networkStatusElem.classList.add('inactive');
+    } else {
+      networkStatusElem.classList.remove('inactive');
+      networkStatusElem.classList.add('active');
+    }
+  }
+
+  // Manejo de autenticación
+  document.getElementById('btn-auth').addEventListener('click', function() {
+    const scopes = ['payments'];
+
+    // Callback para pagos incompletos
+    function onIncompletePaymentFound(payment) {
+      console.log("Pago incompleto encontrado:", payment);
+      // Aquí puedes manejar pagos incompletos según tu lógica
     }
 
-    let currentUser = null;
-    let balance = 0;
-
-    // Función para actualizar el saldo en la interfaz
-    function updateBalanceDisplay() {
-      document.getElementById('balance').innerText = balance.toFixed(2);
-    }
-
-    // Función para verificar la red (Mainnet o Testnet)
-    function updateNetworkStatus() {
-      const networkType = Pi.sandbox ? "Testnet" : "Mainnet";
-      const networkStatusElem = document.getElementById('network-status');
-      const networkTypeElem = document.getElementById('network-type');
-      networkTypeElem.innerText = networkType;
-      if (Pi.sandbox) {
-        networkStatusElem.classList.remove('active');
-        networkStatusElem.classList.add('inactive');
-      } else {
-        networkStatusElem.classList.remove('inactive');
-        networkStatusElem.classList.add('active');
-      }
-    }
-
-    // Manejo de autenticación
-    document.getElementById('btn-auth').addEventListener('click', function() {
-      const scopes = ['payments'];
-
-      // Callback para pagos incompletos
-      function onIncompletePaymentFound(payment) {
-        console.log("Pago incompleto encontrado:", payment);
-        // Aquí puedes manejar pagos incompletos según tu lógica
-      }
-
-      Pi.authenticate(scopes, onIncompletePaymentFound)
-        .then(function(auth) {
-          currentUser = auth.user;
-          document.getElementById('username').innerText = currentUser.username || "Usuario";
-          document.getElementById('auth').classList.add('hidden');
-          document.getElementById('game').classList.remove('hidden');
-          updateBalanceDisplay();
-        })
-        .catch(function(error) {
-          console.error("Error de autenticación:", error);
-          alert("Error de autenticación: " + error.message);
-        });
-    });
-
-    // Manejo del juego
-    document.getElementById('btn-play').addEventListener('click', function() {
-      const selectedNumber = parseInt(selectElem.value);
-
-      Pi.createPayment({
-        amount: 1,
-        memo: `Juego de lotería - Número seleccionado: ${selectedNumber}`,
-        metadata: { number: selectedNumber }
-      }, {
-        onReadyForServerApproval: function(paymentId) {
-          console.log("Pago listo para aprobación del servidor:", paymentId);
-        },
-        onReadyForServerCompletion: function(paymentId, txid) {
-          console.log("Pago listo para completar en el servidor:", paymentId, txid);
-          const randomNumber = Math.floor(Math.random() * 10) + 1;
-          if (selectedNumber === randomNumber) {
-            balance += 10; // Premio por acertar
-            document.getElementById('result').innerText = "¡Ganaste! Has acertado el número.";
-          } else {
-            document.getElementById('result').innerText = `Perdiste. El número ganador era ${randomNumber}.`;
-          }
-          updateBalanceDisplay();
-        },
-        onCancel: function(paymentId) {
-          console.log("Pago cancelado:", paymentId);
-          alert("Pago cancelado por el usuario.");
-        },
-        onError: function(error, payment) {
-          console.error("Error en el pago:", error, payment);
-          alert("Error en el pago: " + error.message);
-        }
+    Pi.authenticate(scopes, onIncompletePaymentFound)
+      .then(function(auth) {
+        currentUser = auth.user;
+        document.getElementById('username').innerText = currentUser.username || "Usuario";
+        document.getElementById('auth').classList.add('hidden');
+        document.getElementById('game').classList.remove('hidden');
+        updateBalanceDisplay();
+      })
+      .catch(function(error) {
+        console.error("Error de autenticación:", error);
+        alert("Error de autenticación: " + error.message);
       });
-    });
+  });
 
-    // Cerrar sesión
-    document.getElementById('btn-logout').addEventListener('click', function() {
-      Pi.logout();
-      currentUser = null;
-      document.getElementById('auth').classList.remove('hidden');
-      document.getElementById('game').classList.add('hidden');
-      alert("Sesión cerrada correctamente.");
-    });
+  // Manejo del juego
+  document.getElementById('btn-play').addEventListener('click', function() {
+    const selectedNumber = parseInt(selectElem.value);
 
-    // Actualizar el estado de la red al cargar la página
-    updateNetworkStatus();
-  </script>
+    Pi.createPayment({
+      amount: 1,
+      memo: `Juego de lotería - Número seleccionado: ${selectedNumber}`,
+      metadata: { number: selectedNumber }
+    }, {
+      onReadyForServerApproval: function(paymentId) {
+        console.log("Pago listo para aprobación del servidor:", paymentId);
+      },
+      onReadyForServerCompletion: function(paymentId, txid) {
+        console.log("Pago listo para completar en el servidor:", paymentId, txid);
+        const randomNumber = Math.floor(Math.random() * 10) + 1;
+        if (selectedNumber === randomNumber) {
+          balance += 10; // Premio por acertar
+          document.getElementById('result').innerText = "¡Ganaste! Has acertado el número.";
+        } else {
+          document.getElementById('result').innerText = `Perdiste. El número ganador era ${randomNumber}.`;
+        }
+        updateBalanceDisplay();
+      },
+      onCancel: function(paymentId) {
+        console.log("Pago cancelado:", paymentId);
+        alert("Pago cancelado por el usuario.");
+      },
+      onError: function(error, payment) {
+        console.error("Error en el pago:", error, payment);
+        alert("Error en el pago: " + error.message);
+      }
+    });
+  });
+
+  // Cerrar sesión
+  document.getElementById('btn-logout').addEventListener('click', function() {
+    Pi.logout();
+    currentUser = null;
+    document.getElementById('auth').classList.remove('hidden');
+    document.getElementById('game').classList.add('hidden');
+    alert("Sesión cerrada correctamente.");
+  });
+
+  // Actualizar el estado de la red al cargar la página
+  updateNetworkStatus();
+</script>
+
 </body>
 </html>
