@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Network App</title>
+    <title>Pi Network Sandbox App</title>
+    <!-- Incluir el SDK de Pi Network -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script>
-        // Inicializar el SDK de Pi Network
-        Pi.init({ version: "2.0" sandbox: true });
+        // Inicializar el SDK de Pi Network en modo sandbox
+        Pi.init({ version: "2.0", sandbox: true });
 
         // Función para manejar pagos incompletos (opcional)
         function onIncompletePaymentFound(payment) {
@@ -18,14 +19,15 @@
         function authenticateAndPay() {
             const scopes = ['payments'];
 
+            // Autenticar al usuario
             Pi.authenticate(scopes, onIncompletePaymentFound).then(function(auth) {
                 console.log("Usuario autenticado:", auth);
 
                 // Solicitar un pago de 1 Pi
                 Pi.createPayment({
-                    amount: 1,
-                    memo: "Pago de 1 Pi por servicios",
-                    metadata: { transactionId: "12345" }
+                    amount: 1, // Cantidad de Pi a pagar
+                    memo: "Pago de 1 Pi en modo sandbox", // Descripción del pago
+                    metadata: { transactionId: "sandbox_test_123" } // Metadatos adicionales
                 }, {
                     onReadyForServerApproval: function(paymentId) {
                         console.log("Pago listo para aprobación del servidor:", paymentId);
@@ -49,7 +51,8 @@
     </script>
 </head>
 <body>
-    <h1>Pi Network App</h1>
+    <h1>Pi Network Sandbox App</h1>
+    <p>Esta es una aplicación de prueba en modo sandbox.</p>
     <button onclick="authenticateAndPay()">Autenticar y Pagar 1 Pi</button>
 </body>
 </html>
