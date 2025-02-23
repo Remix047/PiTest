@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Donación de 1 Pi</title>
+  <title>App de Donación Pi</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -41,65 +41,66 @@
   <button id="authButton">Autenticarse</button>
   <button id="donateButton" disabled>Donar 1 Pi</button>
 
-  <!-- Incluir el SDK de Pi Network para interfaz -->
+  <!-- Se incluyen los scripts del SDK según la documentación -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <script>
-    // Inicializamos el SDK indicando la versión
-    Pi.init({ version: "2.0" sandbox: true });
-
+    // Inicializa el SDK (asegúrate de que este código se ejecute en el Pi Browser)
+    Pi.init({ version: "2.0" });
+  </script>
+  <script>
     const authButton = document.getElementById('authButton');
     const donateButton = document.getElementById('donateButton');
 
-    // Callback para pagos incompletos, según la documentación (puedes extenderlo si lo necesitas)
+    // Callback para pagos incompletos, opcional pero recomendado
     function onIncompletePaymentFound(payment) {
-      console.log("Pago incompleto encontrado:", payment);
+      console.log('Pago incompleto encontrado:', payment);
     }
 
-    // Autenticación del usuario
+    // Autenticación del usuario con el scope 'payments'
     authButton.addEventListener('click', () => {
-      const scopes = ['payments']; // Permite solicitar pagos al usuario
+      const scopes = ['payments'];
       Pi.authenticate(scopes, onIncompletePaymentFound)
-        .then((auth) => {
-          console.log("Autenticación exitosa:", auth);
+        .then(function(auth) {
+          console.log(`Hi there! You're ready to make payments!`, auth);
           alert("¡Autenticación exitosa!");
-          // Habilitamos el botón de donar solo tras una autenticación exitosa
+          // Habilita el botón de donación tras la autenticación
           donateButton.disabled = false;
         })
-        .catch((error) => {
+        .catch(function(error) {
           console.error("Error en autenticación:", error);
           alert("Error en autenticación: " + error.message);
         });
     });
 
-    // Solicitar el pago (donar 1 Pi)
+    // Solicitar el pago (User-to-App) de 1 Pi
     donateButton.addEventListener('click', () => {
       Pi.createPayment({
-        amount: 1, // Monto en Pi a donar
-        memo: "Donación de 1 Pi",
-        metadata: {} // Puedes incluir datos adicionales aquí
+          amount: 1, // Monto en π
+          memo: "Donación de 1 Pi",
+          metadata: {} // Puedes agregar información adicional aquí
       }, {
-        onReadyForServerApproval: function(paymentId) {
-          console.log("Listo para aprobación en el servidor. Payment ID:", paymentId);
-          // En un entorno real se debe aprobar la transacción en el servidor.
-          // Para propósitos de demo simulamos la aprobación y completamos la transacción.
-          setTimeout(() => {
-            // Simulamos la respuesta del servidor con un txid ficticio
-            const txid = "tx_simulada_123456";
-            this.onReadyForServerCompletion(paymentId, txid);
-          }, 2000);
-        },
-        onReadyForServerCompletion: function(paymentId, txid) {
-          console.log("Pago completado. Payment ID:", paymentId, "Transaction ID:", txid);
-          alert("¡Donación completada!");
-        },
-        onCancel: function(paymentId) {
-          console.log("Pago cancelado. Payment ID:", paymentId);
-          alert("Pago cancelado.");
-        },
-        onError: function(error, payment) {
-          console.error("Error en pago:", error, payment);
-          alert("Error en el pago: " + error.message);
-        }
+          onReadyForServerApproval: function(paymentId) {
+              console.log("Listo para aprobación del servidor, paymentId:", paymentId);
+              // En un entorno real, deberías enviar el paymentId a tu servidor
+              // y esperar la aprobación para continuar. Aquí simulamos la aprobación:
+              setTimeout(() => {
+                // Simulamos el txid recibido desde el servidor
+                const txid = "tx_simulado_123456";
+                this.onReadyForServerCompletion(paymentId, txid);
+              }, 2000);
+          },
+          onReadyForServerCompletion: function(paymentId, txid) {
+              console.log("Pago completado, paymentId:", paymentId, "txid:", txid);
+              alert("¡Donación completada!");
+          },
+          onCancel: function(paymentId) {
+              console.log("Pago cancelado, paymentId:", paymentId);
+              alert("Pago cancelado.");
+          },
+          onError: function(error, payment) {
+              console.error("Error en el pago:", error, payment);
+              alert("Error en el pago: " + error.message);
+          }
       });
     });
   </script>
