@@ -1,108 +1,55 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>App de Donación Pi</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      text-align: center;
-      padding-top: 80px;
-      margin: 0;
-    }
-    h1 {
-      color: #333;
-    }
-    button {
-      padding: 12px 25px;
-      font-size: 16px;
-      border: none;
-      border-radius: 5px;
-      margin: 10px;
-      cursor: pointer;
-    }
-    #authButton {
-      background-color: #28a745;
-      color: white;
-    }
-    #donateButton {
-      background-color: #007bff;
-      color: white;
-    }
-    #donateButton:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Network App</title>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <script>
+        // Inicializar el SDK de Pi Network
+        Pi.init({ version: "2.0" sandbox: true });
+
+        // Función para manejar pagos incompletos (opcional)
+        function onIncompletePaymentFound(payment) {
+            console.log("Pago incompleto encontrado:", payment);
+        }
+
+        // Función para autenticar al usuario y solicitar un pago
+        function authenticateAndPay() {
+            const scopes = ['payments'];
+
+            Pi.authenticate(scopes, onIncompletePaymentFound).then(function(auth) {
+                console.log("Usuario autenticado:", auth);
+
+                // Solicitar un pago de 1 Pi
+                Pi.createPayment({
+                    amount: 1,
+                    memo: "Pago de 1 Pi por servicios",
+                    metadata: { transactionId: "12345" }
+                }, {
+                    onReadyForServerApproval: function(paymentId) {
+                        console.log("Pago listo para aprobación del servidor:", paymentId);
+                        // Aquí deberías enviar el paymentId a tu servidor para su aprobación
+                    },
+                    onReadyForServerCompletion: function(paymentId, txid) {
+                        console.log("Pago listo para completación del servidor:", paymentId, txid);
+                        // Aquí deberías enviar el paymentId y txid a tu servidor para su completación
+                    },
+                    onCancel: function(paymentId) {
+                        console.log("Pago cancelado por el usuario:", paymentId);
+                    },
+                    onError: function(error, payment) {
+                        console.error("Error en el pago:", error, payment);
+                    }
+                });
+            }).catch(function(error) {
+                console.error("Error en la autenticación:", error);
+            });
+        }
+    </script>
 </head>
 <body>
-  <h1>Donación de 1 Pi</h1>
-  <button id="authButton">Autenticarse</button>
-  <button id="donateButton" disabled>Donar 1 Pi</button>
-
-  <!-- Se incluyen los scripts del SDK según la documentación -->
-  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-  <script>
-    // Inicializa el SDK (asegúrate de que este código se ejecute en el Pi Browser)
-    Pi.init({ version: "2.0" sandbox: true });
-  </script>
-  <script>
-    const authButton = document.getElementById('authButton');
-    const donateButton = document.getElementById('donateButton');
-
-    // Callback para pagos incompletos, opcional pero recomendado
-    function onIncompletePaymentFound(payment) {
-      console.log('Pago incompleto encontrado:', payment);
-    }
-
-    // Autenticación del usuario con el scope 'payments'
-    authButton.addEventListener('click', () => {
-      const scopes = ['payments'];
-      Pi.authenticate(scopes, onIncompletePaymentFound)
-        .then(function(auth) {
-          console.log(`Hi there! You're ready to make payments!`, auth);
-          alert("¡Autenticación exitosa!");
-          // Habilita el botón de donación tras la autenticación
-          donateButton.disabled = false;
-        })
-        .catch(function(error) {
-          console.error("Error en autenticación:", error);
-          alert("Error en autenticación: " + error.message);
-        });
-    });
-
-    // Solicitar el pago (User-to-App) de 1 Pi
-    donateButton.addEventListener('click', () => {
-      Pi.createPayment({
-          amount: 1, // Monto en π
-          memo: "Donación de 1 Pi",
-          metadata: {} // Puedes agregar información adicional aquí
-      }, {
-          onReadyForServerApproval: function(paymentId) {
-              console.log("Listo para aprobación del servidor, paymentId:", paymentId);
-              // En un entorno real, deberías enviar el paymentId a tu servidor
-              // y esperar la aprobación para continuar. Aquí simulamos la aprobación:
-              setTimeout(() => {
-                // Simulamos el txid recibido desde el servidor
-                const txid = "tx_simulado_123456";
-                this.onReadyForServerCompletion(paymentId, txid);
-              }, 2000);
-          },
-          onReadyForServerCompletion: function(paymentId, txid) {
-              console.log("Pago completado, paymentId:", paymentId, "txid:", txid);
-              alert("¡Donación completada!");
-          },
-          onCancel: function(paymentId) {
-              console.log("Pago cancelado, paymentId:", paymentId);
-              alert("Pago cancelado.");
-          },
-          onError: function(error, payment) {
-              console.error("Error en el pago:", error, payment);
-              alert("Error en el pago: " + error.message);
-          }
-      });
-    });
-  </script>
+    <h1>Pi Network App</h1>
+    <button onclick="authenticateAndPay()">Autenticar y Pagar 1 Pi</button>
 </body>
 </html>
