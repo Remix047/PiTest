@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Lotería Pi Network</title>
+  <!-- Incluir el SDK de Pi -->
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <script>
+    // Inicializar el SDK de Pi
+    Pi.init({ version: "2.0" });
+  </script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .hidden { display: none; }
+    label, select, button { font-size: 1rem; margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>Lotería Pi Network</h1>
+
+  <!-- Sección de autenticación -->
+  <div id="auth">
+    <button id="btn-auth">Autenticar con Pi</button>
+  </div>
+
+  <!-- Sección del juego (oculta hasta autenticación) -->
+  <div id="game" class="hidden">
+    <p>Bienvenido, <span id="username"></span></p>
+    <div>
+      <label for="number">Elige un número (1-10): </label>
+      <select id="number">
+        <!-- Se llenará dinámicamente -->
+      </select>
+    </div>
+    <button id="btn-play">Jugar (Pagar 1 Pi)</button>
+    <p id="result"></p>
+    <hr>
+    <p>Saldo acumulado: <span id="balance">0</span> Pi</p>
+    <button id="btn-claim">Reclamar saldo</button>
+  </div>
+
+  <script>
+    // Rellenar el select con números del 1 al 10
+    const selectElem = document.getElementById('number');
+    for (let i = 1; i <= 10; i++) {
+      const option = document.createElement('option');
+      option.value = i;
+      option.text = i;
+      selectElem.appendChild(option);
+    }
+
+    let currentUser = null;
+    let balance = 0;
+    let balanceTimestamp = null; // Marca de tiempo cuando se acreditó el primer saldo
+
+    // Funciones para gestionar el saldo usando localStorage
+    function loadBalance() {
+      const storedBalance = localStorage.getItem('piLotteryBalance');
+      const storedTimestamp = localStorage.getItem('piLotteryTimestamp');
+      if (storedBalance) {
+        balance = parseFloat(storedBalance);
+      }
+      if (storedTimestamp) {
+        balanceTimestamp = parseInt(storedTimestamp);
+      }
+      updateBalanceDisplay();
+    }
+
+    function updateBalanceDisplay() {
+      document.getElementById('balance').innerText = balance;
+    }
+
+    function saveBalance() {
+      localStorage.setItem('piLotteryBalance', balance);
+      if (!balanceTimestamp) {
+        balanceTimestamp = Date.now();
+        localStorage.setItem('piLotteryTimestamp', balanceTimestamp);
+      }
+    }
+
+    // Manejo de autenticación
+    document.getElementById('btn-auth').addEventListener('click', function() {
+      const scopes = ['payments'];
+      // Callback opcional para pagos incompletos
+      function onIncompletePaymentFound(payment) {
+        console.log("Pago incompleto encontrado:", payment);
+      }
+      Pi.authenticate(scopes, onIncompletePaymentFound)
+        .then(function(auth) {
+          currentUser = auth.user;
+          document.getElementById('username').innerText = currentUser.username || "Usuario";
+          document.getElementById('auth').classList.add('hidden');
+          document.getElementById('game').classList.remove('hidden');
+          loadBalance();
+        })
+        .catch(function(error) {
+          console.error("Error de autenticación:", error);
+        });
+    });
+
+    // Función para jugar a la lotería
+    function playLottery() {
+      const selectedNumber = parseInt(document.getElementById('number').value);
+      // Generar número ganador aleatorio entre 1 y 10
+      const winningNumber = Math.floor(Math.random() * 10) + 1;
+      let message = `El número ganador es ${winningNumber}. `;
+      if (selectedNumber === winningNumber) {
+        message += "¡Felicidades, ganaste 10 Pi!";
+        balance += 10;
+        saveBalance();
+        updateBalanceDisplay();
+      } else {
+        message += "Lo siento, no ganaste esta vez.";
+      }
+      document.getElementById('result').innerText = message;
+    }
+
+    // Manejar el clic en "Jugar"
+    document.getElementById('btn-play').addEventListener('click', function() {
+      // Solicitar un pago de 1 Pi para jugar
+      Pi.createPayment({
+        amount: 1,
+        memo: "Pago para jugar a la lotería",
+        metadata: { game: "loteria" }
+      }, {
+        onReadyForServerApproval: function(paymentId) {
+          console.log("Pago pendiente de aprobación:", paymentId);
+          // Para demo, se asume aprobación inmediata.
+        },
+        onReadyForServerCompletion: function(paymentId, txid) {
+          console.log("Pago completado:", txid);
+          playLottery();
+        },
+        onCancel: function(paymentId) {
+          console.log("Pago cancelado:", paymentId);
+          document.getElementById('result').innerText = "Pago cancelado, no se jugó.";
+        },
+        onError: function(error, payment) {
+          console.error("Error en el pago:", error);
+          document.getElementById('result').innerText = "Error en el pago.";
+        }
+      });
+    });
+
+    // Manejar el reclamo del saldo acumulado
+    document.getElementById('btn-claim').addEventListener('click', function() {
+      // Comprobar si han pasado más de 7 días desde que se acreditó el saldo
+      if (balanceTimestamp) {
+        const now = Date.now();
+        const diffDays = (now - balanceTimestamp) / (1000 * 60 * 60 * 24);
+        if (diffDays > 7) {
+          alert("El saldo ha expirado (más de 7 días). Se reiniciará el balance.");
+          balance = 0;
+          balanceTimestamp = null;
+          localStorage.removeItem('piLotteryBalance');
+          localStorage.removeItem('piLotteryTimestamp');
+          updateBalanceDisplay();
+          return;
+        }
+      }
+      // Simulación del reclamo: en un escenario real se debería usar el flujo app-to-user (backend)
+      alert(`Has reclamado ${balance} Pi.`);
+      balance = 0;
+      balanceTimestamp = null;
+      localStorage.removeItem('piLotteryBalance');
+      localStorage.removeItem('piLotteryTimestamp');
+      updateBalanceDisplay();
+    });
+  </script>
+</body>
+</html>
