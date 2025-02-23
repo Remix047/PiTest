@@ -2,48 +2,118 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Lotería Pi Network</title>
+  <title>One PI - Lotería Pi Network</title>
   <!-- Incluir el SDK de Pi -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <script>
     // Inicializar el SDK de Pi
-      Pi.init({ version: "2.0", sandbox: true });
+    Pi.init({ version: "2.0" sandbox: true });
   </script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .hidden { display: none; }
-    label, select, button { font-size: 1rem; margin: 5px 0; }
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      animation: fadeIn 1s ease-in-out;
+    }
+    h1 {
+      color: #333;
+    }
+    .hidden {
+      display: none;
+    }
+    label, select, button {
+      font-size: 1rem;
+      margin: 10px 0;
+    }
+    button {
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    footer {
+      margin-top: 20px;
+    }
+    footer a {
+      color: #007bff;
+      text-decoration: none;
+      margin: 0 10px;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+    .network-status {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    .network-status.active {
+      color: green;
+    }
+    .network-status.inactive {
+      color: red;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
   </style>
-  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Lotería Pi Network</h1>
+  <div class="container">
+    <h1>One PI - Lotería Pi Network</h1>
 
-  <!-- Sección de autenticación -->
-  <div id="auth">
-    <button id="btn-auth">Autenticar con Pi</button>
-  </div>
-
-  <!-- Sección del juego (oculta hasta autenticación) -->
-  <div id="game" class="hidden">
-    <p>Bienvenido, <span id="username"></span></p>
-    <div>
-      <label for="number">Elige un número (1-10): </label>
-      <select id="number">
-        <!-- Se llenará dinámicamente -->
-      </select>
+    <!-- Indicador de red -->
+    <div class="network-status" id="network-status">
+      Red: <span id="network-type">Cargando...</span>
     </div>
-    <button id="btn-play">Jugar (Pagar 1 Pi)</button>
-    <p id="result"></p>
-    <hr>
-    <p>Saldo acumulado: <span id="balance">0</span> Pi</p>
-    <button id="btn-claim">Reclamar saldo</button>
-  </div>
-  <footer style="margin-top: 40px;">
-  <a href="terms.html" target="_blank">Términos de Uso</a> |
-  <a href="privacy.html" target="_blank">Política de Privacidad</a>
-</footer>
 
+    <!-- Sección de autenticación -->
+    <div id="auth">
+      <button id="btn-auth">Autenticar con Pi</button>
+    </div>
+
+    <!-- Sección del juego (oculta hasta autenticación) -->
+    <div id="game" class="hidden">
+      <p>Bienvenido, <span id="username"></span></p>
+      <div>
+        <label for="number">Elige un número (1-10): </label>
+        <select id="number">
+          <!-- Se llenará dinámicamente -->
+        </select>
+      </div>
+      <button id="btn-play">Jugar (Pagar 1 Pi)</button>
+      <p id="result"></p>
+      <hr>
+      <p>Saldo acumulado: <span id="balance">0</span> Pi</p>
+      <button id="btn-claim">Reclamar saldo</button>
+      <button id="btn-logout">Cerrar sesión</button>
+    </div>
+    <footer>
+      <a href="terms.html" target="_blank">Términos de Uso</a> |
+      <a href="privacy.html" target="_blank">Política de Privacidad</a>
+    </footer>
+  </div>
 
   <script>
     // Rellenar el select con números del 1 al 10
@@ -73,7 +143,7 @@
     }
 
     function updateBalanceDisplay() {
-      document.getElementById('balance').innerText = balance;
+      document.getElementById('balance').innerText = balance.toFixed(2);
     }
 
     function saveBalance() {
@@ -84,12 +154,28 @@
       }
     }
 
+    // Función para verificar la red (Mainnet o Testnet)
+    function updateNetworkStatus() {
+      const networkType = Pi.sandbox ? "Testnet" : "Mainnet";
+      const networkStatusElem = document.getElementById('network-status');
+      const networkTypeElem = document.getElementById('network-type');
+      networkTypeElem.innerText = networkType;
+      if (Pi.sandbox) {
+        networkStatusElem.classList.remove('active');
+        networkStatusElem.classList.add('inactive');
+      } else {
+        networkStatusElem.classList.remove('inactive');
+        networkStatusElem.classList.add('active');
+      }
+    }
+
     // Manejo de autenticación
     document.getElementById('btn-auth').addEventListener('click', function() {
       const scopes = ['payments'];
       // Callback opcional para pagos incompletos
       function onIncompletePaymentFound(payment) {
         console.log("Pago incompleto encontrado:", payment);
+        // Manejar pagos incompletos según la lógica de tu aplicación
       }
       Pi.authenticate(scopes, onIncompletePaymentFound)
         .then(function(auth) {
@@ -101,77 +187,82 @@
         })
         .catch(function(error) {
           console.error("Error de autenticación:", error);
+          alert("Error de autenticación: " + error.message);
         });
     });
 
-    // Función para jugar a la lotería
-    function playLottery() {
-      const selectedNumber = parseInt(document.getElementById('number').value);
-      // Generar número ganador aleatorio entre 1 y 10
-      const winningNumber = Math.floor(Math.random() * 10) + 1;
-      let message = `El número ganador es ${winningNumber}. `;
-      if (selectedNumber === winningNumber) {
-        message += "¡Felicidades, ganaste 10 Pi!";
-        balance += 10;
-        saveBalance();
-        updateBalanceDisplay();
-      } else {
-        message += "Lo siento, no ganaste esta vez.";
-      }
-      document.getElementById('result').innerText = message;
-    }
-
-    // Manejar el clic en "Jugar"
+    // Manejo del juego
     document.getElementById('btn-play').addEventListener('click', function() {
-      // Solicitar un pago de 1 Pi para jugar
-      Pi.createPayment({
+      if (balance < 1) {
+        alert("No tienes fondos suficientes para jugar.");
+        return;
+      }
+
+      const selectedNumber = parseInt(selectElem.value);
+      const paymentData = {
         amount: 1,
-        memo: "Pago para jugar a la lotería",
-        metadata: { game: "loteria" }
-      }, {
-        onReadyForServerApproval: function(paymentId) {
-          console.log("Pago pendiente de aprobación:", paymentId);
-          // Para demo, se asume aprobación inmediata.
-        },
-        onReadyForServerCompletion: function(paymentId, txid) {
-          console.log("Pago completado:", txid);
-          playLottery();
-        },
-        onCancel: function(paymentId) {
-          console.log("Pago cancelado:", paymentId);
-          document.getElementById('result').innerText = "Pago cancelado, no se jugó.";
-        },
-        onError: function(error, payment) {
+        memo: `Juego de lotería - Número seleccionado: ${selectedNumber}`,
+        metadata: { number: selectedNumber }
+      };
+
+      Pi.createPayment(paymentData)
+        .then(function(payment) {
+          console.log("Pago exitoso:", payment);
+          const randomNumber = Math.floor(Math.random() * 10) + 1;
+          if (selectedNumber === randomNumber) {
+            balance += 10; // Premio por acertar
+            document.getElementById('result').innerText = "¡Ganaste! Has acertado el número.";
+          } else {
+            document.getElementById('result').innerText = `Perdiste. El número ganador era ${randomNumber}.`;
+          }
+          saveBalance();
+          updateBalanceDisplay();
+        })
+        .catch(function(error) {
           console.error("Error en el pago:", error);
-          document.getElementById('result').innerText = "Error en el pago.";
-        }
-      });
+          alert("Error en el pago: " + error.message);
+        });
     });
 
-    // Manejar el reclamo del saldo acumulado
+    // Manejo de reclamación de saldo
     document.getElementById('btn-claim').addEventListener('click', function() {
-      // Comprobar si han pasado más de 7 días desde que se acreditó el saldo
-      if (balanceTimestamp) {
-        const now = Date.now();
-        const diffDays = (now - balanceTimestamp) / (1000 * 60 * 60 * 24);
-        if (diffDays > 7) {
-          alert("El saldo ha expirado (más de 7 días). Se reiniciará el balance.");
-          balance = 0;
-          balanceTimestamp = null;
-          localStorage.removeItem('piLotteryBalance');
-          localStorage.removeItem('piLotteryTimestamp');
-          updateBalanceDisplay();
-          return;
-        }
+      if (balance > 0) {
+        const paymentData = {
+          amount: balance,
+          memo: "Reclamación de saldo acumulado",
+          metadata: { action: "claim" }
+        };
+
+        Pi.createPayment(paymentData)
+          .then(function(payment) {
+            console.log("Pago de reclamación exitoso:", payment);
+            balance = 0;
+            saveBalance();
+            updateBalanceDisplay();
+            alert("Saldo reclamado con éxito.");
+          })
+          .catch(function(error) {
+            console.error("Error en la reclamación:", error);
+            alert("Error en la reclamación: " + error.message);
+          });
+      } else {
+        alert("No tienes saldo para reclamar.");
       }
-      // Simulación del reclamo: en un escenario real se debería usar el flujo app-to-user (backend)
-      alert(`Has reclamado ${balance} Pi.`);
-      balance = 0;
-      balanceTimestamp = null;
-      localStorage.removeItem('piLotteryBalance');
-      localStorage.removeItem('piLotteryTimestamp');
-      updateBalanceDisplay();
     });
+
+    // Cerrar sesión
+    document.getElementById('btn-logout').addEventListener('click', function() {
+      Pi.logout();
+      currentUser = null;
+      document.getElementById('auth').classList.remove('hidden');
+      document.getElementById('game').classList.add('hidden');
+      alert("Sesión cerrada correctamente.");
+    });
+
+    // Cargar el saldo al iniciar la página
+    loadBalance();
+    // Actualizar el estado de la red
+    updateNetworkStatus();
   </script>
 </body>
 </html>
