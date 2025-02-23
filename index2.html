@@ -1,222 +1,89 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>One PI - Lotería Pi Network</title>
-  <!-- Incluir el SDK de Pi -->
-  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-  <script>
-    // Inicializar el SDK de Pi en modo sandbox
-    Pi.init({ version: "2.0", sandbox: true });
-  </script>
-  <style>
-    body {
-      font-family: 'Arial', sans-serif;
-      background-color: #f4f4f9;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .container {
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      text-align: center;
-      max-width: 400px;
-      width: 100%;
-      animation: fadeIn 1s ease-in-out;
-    }
-    h1 {
-      color: #333;
-    }
-    .hidden {
-      display: none;
-    }
-    label, select, button {
-      font-size: 1rem;
-      margin: 10px 0;
-    }
-    button {
-      background-color: #007bff;
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    footer {
-      margin-top: 20px;
-    }
-    footer a {
-      color: #007bff;
-      text-decoration: none;
-      margin: 0 10px;
-    }
-    footer a:hover {
-      text-decoration: underline;
-    }
-    .network-status {
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    .network-status.active {
-      color: green;
-    }
-    .network-status.inactive {
-      color: red;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Donación de 1 Pi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        #donateButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #008CBA;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #donateButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const donateButton = document.getElementById('donateButton');
+            donateButton.disabled = true;
+
+            // Inicializar el SDK de Pi Network en modo sandbox
+            Pi.init({ version: "2.0", sandbox: true });
+
+            // Autenticar al usuario
+            const scopes = ['payments'];
+            function onIncompletePaymentFound(payment) {
+                console.log('Pago incompleto encontrado:', payment);
+            }
+
+            Pi.authenticate(scopes, onIncompletePaymentFound).then(function(auth) {
+                console.log('Usuario autenticado:', auth);
+                donateButton.disabled = false; // Habilitar el botón después de la autenticación
+            }).catch(function(error) {
+                console.error('Error en la autenticación:', error);
+            });
+
+            // Manejar el clic en el botón de donación
+            donateButton.addEventListener('click', function() {
+                const paymentData = {
+                    amount: 1,
+                    memo: 'Donación de prueba',
+                    metadata: { purpose: 'donation' },
+                };
+
+                const paymentCallbacks = {
+                    onReadyForServerApproval: function(paymentId) {
+                        console.log('Listo para aprobación del servidor:', paymentId);
+                        // Aquí puedes enviar el paymentId a tu servidor para su aprobación
+                    },
+                    onReadyForServerCompletion: function(paymentId, txid) {
+                        console.log('Listo para completar en el servidor:', paymentId, txid);
+                        // Aquí puedes completar la transacción en tu servidor
+                    },
+                    onCancel: function(paymentId) {
+                        console.log('Pago cancelado:', paymentId);
+                    },
+                    onError: function(error, payment) {
+                        console.error('Error en el pago:', error, payment);
+                    }
+                };
+
+                Pi.createPayment(paymentData, paymentCallbacks).then(function(payment) {
+                    console.log('Pago creado:', payment);
+                }).catch(function(error) {
+                    console.error('Error al crear el pago:', error);
+                });
+            });
+        });
+    </script>
 </head>
 <body>
-  <div class="container">
-    <h1>One PI - Lotería Pi Network</h1>
-
-    <!-- Indicador de red -->
-    <div class="network-status" id="network-status">
-      Red: <span id="network-type">Cargando...</span>
-    </div>
-
-    <!-- Sección de autenticación -->
-    <div id="auth">
-      <button id="btn-auth">Autenticar con Pi</button>
-    </div>
-
-    <!-- Sección del juego (oculta hasta autenticación) -->
-    <div id="game" class="hidden">
-      <p>Bienvenido, <span id="username"></span></p>
-      <div>
-        <label for="number">Elige un número (1-10): </label>
-        <select id="number">
-          <!-- Se llenará dinámicamente -->
-        </select>
-      </div>
-      <button id="btn-play">Jugar (Pagar 1 Pi)</button>
-      <p id="result"></p>
-      <hr>
-      <p>Saldo acumulado: <span id="balance">0</span> Pi</p>
-      <button id="btn-claim">Reclamar saldo</button>
-      <button id="btn-logout">Cerrar sesión</button>
-    </div>
-    <footer>
-      <a href="terms.html" target="_blank">Términos de Uso</a> |
-      <a href="privacy.html" target="_blank">Política de Privacidad</a>
-    </footer>
-  </div>
-  <script>
-  // Rellenar el select con números del 1 al 10
-  const selectElem = document.getElementById('number');
-  for (let i = 1; i <= 10; i++) {
-    const option = document.createElement('option');
-    option.value = i;
-    option.text = i;
-    selectElem.appendChild(option);
-  }
-
-  let currentUser = null;
-  let balance = 0;
-
-  // Función para actualizar el saldo en la interfaz
-  function updateBalanceDisplay() {
-    document.getElementById('balance').innerText = balance.toFixed(2);
-  }
-
-  // Función para verificar la red (Mainnet o Testnet)
-  function updateNetworkStatus() {
-    const networkType = Pi.sandbox ? "Testnet" : "Mainnet";
-    const networkStatusElem = document.getElementById('network-status');
-    const networkTypeElem = document.getElementById('network-type');
-    networkTypeElem.innerText = networkType;
-    if (Pi.sandbox) {
-      networkStatusElem.classList.remove('active');
-      networkStatusElem.classList.add('inactive');
-    } else {
-      networkStatusElem.classList.remove('inactive');
-      networkStatusElem.classList.add('active');
-    }
-  }
-
-  // Manejo de autenticación
-  document.getElementById('btn-auth').addEventListener('click', function() {
-    const scopes = ['payments'];
-
-    // Callback para pagos incompletos
-    function onIncompletePaymentFound(payment) {
-      console.log("Pago incompleto encontrado:", payment);
-      // Aquí puedes manejar pagos incompletos según tu lógica
-    }
-
-    Pi.authenticate(scopes, onIncompletePaymentFound)
-      .then(function(auth) {
-        currentUser = auth.user;
-        document.getElementById('username').innerText = currentUser.username || "Usuario";
-        document.getElementById('auth').classList.add('hidden');
-        document.getElementById('game').classList.remove('hidden');
-        updateBalanceDisplay();
-      })
-      .catch(function(error) {
-        console.error("Error de autenticación:", error);
-        alert("Error de autenticación: " + error.message);
-      });
-  });
-
-  // Manejo del juego
-  document.getElementById('btn-play').addEventListener('click', function() {
-    const selectedNumber = parseInt(selectElem.value);
-
-    Pi.createPayment({
-      amount: 1,
-      memo: `Juego de lotería - Número seleccionado: ${selectedNumber}`,
-      metadata: { number: selectedNumber }
-    }, {
-      onReadyForServerApproval: function(paymentId) {
-        console.log("Pago listo para aprobación del servidor:", paymentId);
-      },
-      onReadyForServerCompletion: function(paymentId, txid) {
-        console.log("Pago listo para completar en el servidor:", paymentId, txid);
-        const randomNumber = Math.floor(Math.random() * 10) + 1;
-        if (selectedNumber === randomNumber) {
-          balance += 10; // Premio por acertar
-          document.getElementById('result').innerText = "¡Ganaste! Has acertado el número.";
-        } else {
-          document.getElementById('result').innerText = `Perdiste. El número ganador era ${randomNumber}.`;
-        }
-        updateBalanceDisplay();
-      },
-      onCancel: function(paymentId) {
-        console.log("Pago cancelado:", paymentId);
-        alert("Pago cancelado por el usuario.");
-      },
-      onError: function(error, payment) {
-        console.error("Error en el pago:", error, payment);
-        alert("Error en el pago: " + error.message);
-      }
-    });
-  });
-
-  // Cerrar sesión
-  document.getElementById('btn-logout').addEventListener('click', function() {
-    Pi.logout();
-    currentUser = null;
-    document.getElementById('auth').classList.remove('hidden');
-    document.getElementById('game').classList.add('hidden');
-    alert("Sesión cerrada correctamente.");
-  });
-
-  // Actualizar el estado de la red al cargar la página
-  updateNetworkStatus();
-</script>
-
+    <button id="donateButton">Donar 1 Pi</button>
 </body>
 </html>
